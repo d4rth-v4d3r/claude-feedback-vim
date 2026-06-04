@@ -81,6 +81,15 @@ local function setup_commands()
 end
 
 function M.setup(opts)
+  local ok, err = pcall(require, "snacks")
+  if not ok then
+    vim.notify(
+      "claude-feedback requires snacks.nvim: " .. tostring(err),
+      vim.log.levels.ERROR
+    )
+    return
+  end
+
   config.setup(opts)
   store.init()
   signs.setup_highlights()

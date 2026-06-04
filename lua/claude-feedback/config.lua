@@ -28,8 +28,8 @@ M.defaults = {
   keys = {
     add = "<leader>cr",
     thread = "<leader>ct",
-    next = "]c",
-    prev = "[c",
+    next = "]r",
+    prev = "[r",
     menu = "<leader>cm",
     copy = "<leader>cy",
   },

@@ -112,6 +112,14 @@ function M.find_by_id(id)
   end
 end
 
+function M.find_batch_by_id(id)
+  for _, batch in ipairs(state.reviews) do
+    if batch.id == id then
+      return batch
+    end
+  end
+end
+
 function M.update(mutator)
   mutator(state)
   save()

@@ -9,7 +9,13 @@ local util = require("claude-feedback.git.util")
 local M = {}
 
 local function notify(msg, level)
-  require("snacks").notifier(msg, level or vim.log.levels.INFO)
+  level = level or vim.log.levels.INFO
+  local ok = pcall(function()
+    require("snacks").notifier(msg, level)
+  end)
+  if not ok then
+    vim.notify(msg, level)
+  end
 end
 
 local function filter_by_worktree(comments, worktree_root)
@@ -212,7 +218,7 @@ function M.resolved()
         batch.created_at or "unknown",
         #(batch.comments or {})
       ),
-      item = { batch = batch },
+      item = { batch_id = batch.id },
       preview = {
         text = batch.copied_text or "",
         ft = "markdown",
@@ -232,13 +238,14 @@ function M.resolved()
       cf_rollback = {
         desc = "Rollback batch",
         action = function(picker, item)
-          local batch = item and item.item and item.item.batch
+          local batch_id = item and item.item and item.item.batch_id
+          local batch = batch_id and store.find_batch_by_id(batch_id)
           if not batch then
             return
           end
           store.update(function(state)
             for idx, b in ipairs(state.reviews) do
-              if b.id == batch.id then
+              if b.id == batch_id then
                 table.remove(state.reviews, idx)
                 state.pending = vim.list_extend(batch.comments or {}, state.pending)
                 break
