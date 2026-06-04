@@ -1,3 +1,4 @@
+local notify = require("claude-feedback.notify")
 local config = require("claude-feedback.config")
 local store = require("claude-feedback.store")
 local signs = require("claude-feedback.comments.signs")
@@ -99,21 +100,28 @@ function M.setup(opts)
 end
 
 function M.add_comment()
-  local Snacks = require("snacks")
   local bufnr = vim.api.nvim_get_current_buf()
+  local file_path = vim.api.nvim_buf_get_name(bufnr)
+  if file_path == "" or vim.bo[bufnr].buftype ~= "" then
+    notify.show("Open a saved file first, then add a review comment", vim.log.levels.WARN)
+    return
+  end
+
+  local Snacks = require("snacks")
   local line = vim.api.nvim_win_get_cursor(0)[1]
   local raw = (vim.api.nvim_buf_get_lines(bufnr, line - 1, line, false)[1] or ""):gsub("^%s+", "")
   local hint = raw ~= "" and string.format("Line %d: %s", line, raw:sub(1, 80)) or string.format("Line %d", line)
 
   Snacks.input({ prompt = "Review comment · " .. hint }, function(text)
-    if not text then
+    if not text or text:match("^%s*$") then
+      notify.show("Comment cancelled", vim.log.levels.INFO)
       return
     end
     local ok, err = add.add_at_cursor(text)
     if not ok then
-      vim.notify(err, vim.log.levels.WARN)
+      notify.show(err, vim.log.levels.WARN)
     else
-      vim.notify("Review comment added to pending", vim.log.levels.INFO)
+      notify.show("Review comment added to pending", vim.log.levels.INFO)
     end
   end)
 end

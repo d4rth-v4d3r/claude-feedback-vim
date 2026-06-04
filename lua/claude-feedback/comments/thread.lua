@@ -1,4 +1,5 @@
 local config = require("claude-feedback.config")
+local notify = require("claude-feedback.notify")
 local store = require("claude-feedback.store")
 
 local M = {}
@@ -44,6 +45,15 @@ local function build_lines(comment)
   return lines
 end
 
+local function refresh_float(win, comment_id)
+  local comment = store.find_by_id(comment_id)
+  if not comment or not win.buf or not vim.api.nvim_buf_is_valid(win.buf) then
+    return
+  end
+  local lines = build_lines(comment)
+  vim.api.nvim_buf_set_lines(win.buf, 0, -1, false, lines)
+end
+
 local function open_float(comment)
   local Snacks = require("snacks")
   local comment_id = comment.id
@@ -56,6 +66,7 @@ local function open_float(comment)
     border = config.get().float.border,
     title = " Code Review ",
     title_pos = "center",
+    footer_keys = { "r", "e", "d", "q" },
     keys = {
       q = "close",
       ["<esc>"] = "close",
@@ -78,7 +89,7 @@ local function open_float(comment)
               end
             end
           end)
-          self:update({ text = build_lines(store.find_by_id(comment_id) or comment) })
+          refresh_float(self, comment_id)
         end)
       end,
       e = function(self)
@@ -100,7 +111,7 @@ local function open_float(comment)
               end
             end
           end)
-          self:update({ text = build_lines(store.find_by_id(comment_id) or comment) })
+          refresh_float(self, comment_id)
         end)
       end,
       d = function(self)
@@ -109,6 +120,7 @@ local function open_float(comment)
             return c.id ~= comment_id
           end, state.pending)
         end)
+        notify.show("Review comment deleted", vim.log.levels.INFO)
         self:close()
       end,
     },
@@ -118,7 +130,7 @@ end
 function M.open(comment_id)
   local comment = comment_id and store.find_by_id(comment_id) or get_comment_at_cursor()
   if not comment then
-    vim.notify("No review comment on this line", vim.log.levels.WARN)
+    notify.show("No review comment on this line", vim.log.levels.WARN)
     return
   end
   open_float(comment)
@@ -142,7 +154,7 @@ function M.jump(direction)
   end)
 
   if #comments == 0 then
-    vim.notify("No review comments in this file", vim.log.levels.INFO)
+    notify.show("No review comments in this file", vim.log.levels.INFO)
     return
   end
 

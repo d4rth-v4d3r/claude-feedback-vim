@@ -1,4 +1,15 @@
+local notify = require("claude-feedback.notify")
+
 local M = {}
+
+local actions = {
+  ["Add review comment"] = "add_comment",
+  ["Open pending list"] = "pending",
+  ["Copy to clipboard"] = "copy",
+  ["Open diff vs parent"] = "diff",
+  ["Set parent branch"] = "set_parent",
+  ["Resolved batches"] = "resolved",
+}
 
 function M.open()
   local Snacks = require("snacks")
@@ -13,20 +24,22 @@ function M.open()
     if not choice then
       return
     end
-    local cf = require("claude-feedback")
-    if choice == "Add review comment" then
-      cf.add_comment()
-    elseif choice == "Open pending list" then
-      cf.pending()
-    elseif choice == "Copy to clipboard" then
-      cf.copy()
-    elseif choice == "Open diff vs parent" then
-      cf.diff()
-    elseif choice == "Set parent branch" then
-      cf.set_parent()
-    elseif choice == "Resolved batches" then
-      cf.resolved()
+    local fn_name = actions[choice]
+    if not fn_name then
+      return
     end
+    vim.schedule(function()
+      local cf = require("claude-feedback")
+      local fn = cf[fn_name]
+      if type(fn) ~= "function" then
+        notify.show("Unknown action: " .. fn_name, vim.log.levels.ERROR)
+        return
+      end
+      local ok, err = pcall(fn)
+      if not ok then
+        notify.show(tostring(err), vim.log.levels.ERROR)
+      end
+    end)
   end)
 end
 

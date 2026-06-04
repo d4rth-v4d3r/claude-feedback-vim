@@ -1,3 +1,4 @@
+local notify_mod = require("claude-feedback.notify")
 local changed_files = require("claude-feedback.git.changed_files")
 local clipboard = require("claude-feedback.clipboard")
 local format = require("claude-feedback.format")
@@ -9,13 +10,7 @@ local util = require("claude-feedback.git.util")
 local M = {}
 
 local function notify(msg, level)
-  level = level or vim.log.levels.INFO
-  local ok = pcall(function()
-    require("snacks").notifier(msg, level)
-  end)
-  if not ok then
-    vim.notify(msg, level)
-  end
+  notify_mod.show(msg, level)
 end
 
 local function filter_by_worktree(comments, worktree_root)
@@ -140,20 +135,32 @@ function M.pending(worktree_root)
       }
     end
   else
-    items[#items + 1] = { text = "No pending comments", disabled = true }
+    items[#items + 1] = { text = "No pending comments (already copied? check Resolved batches)", item = { hint = true } }
   end
+
+  items[#items + 1] = {
+    text = "Keys: Enter=open comment · a=add · y=copy · p=parent · c=clear · ?=help",
+    item = { hint = true },
+  }
 
   Snacks.picker.pick({
     title = "Code Review · Pending",
     items = items,
     preview = "none",
     confirm = function(picker, item)
-      local comment_id = item and item.item and item.item.comment_id
+      if not item or not item.item then
+        return
+      end
+      local comment_id = item.item.comment_id
       if comment_id then
         picker:close()
         vim.schedule(function()
           thread.open(comment_id)
         end)
+        return
+      end
+      if item.item.hint then
+        notify("Use a=add, y=copy, p=parent, c=clear. Resolved batches are in the menu.", vim.log.levels.INFO)
       end
     end,
     actions = {
