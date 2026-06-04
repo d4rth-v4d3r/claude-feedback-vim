@@ -193,16 +193,16 @@ require("claude-feedback").setup({
     include_absolute_paths = true,
   },
   diff = {
-    on_open = true,              -- vertical diff when opening from changed-files explorer
+    on_open = true,
     vertical = true,
-    layout = "vscode",           -- floating; use "sidebar" only if you want it docked left
+    toggle = true,             -- run :ClaudeFeedbackDiff again to clear filter
   },
 })
 ```
 
 ### Changed-files explorer (`:ClaudeFeedbackDiff`)
 
-Opens a **floating snacks explorer** (vscode layout by default) filtered to changed files only — your normal sidebar file explorer stays open. Press Enter on a file to open it in the editor with a **vertical diff vs the parent branch** (via gitsigns). Untracked files open without a diff. Use `]g` / `[g` in the explorer to jump between git changes.
+Applies a **filter to your existing LazyVim snacks explorer** (sidebar) — changed files and their parent folders only. Does not open a separate floating picker. Press Enter on a file to open it with a **vertical diff vs the parent branch** (via gitsigns). Run `:ClaudeFeedbackDiff` again to clear the filter and show all files.
 
 State is persisted to `stdpath("data")/claude-feedback/state.json`.
 

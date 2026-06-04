@@ -8,6 +8,11 @@ local M = {}
 
 ---@type table<string, { rel: string, base: string?, untracked: boolean }>
 M._file_meta = {}
+M._filter_active = false
+M._saved = {}
+M._default_confirm = nil
+
+local open_with_diff
 
 local function notify(msg, level)
   notify_mod.show(msg, level)
@@ -15,6 +20,19 @@ end
 
 local function norm(path)
   return vim.fn.fnamemodify(path, ":p")
+end
+
+local function project_root()
+  local ok, lv = pcall(require, "lazyvim.util")
+  if ok and lv.root then
+    return lv.root()
+  end
+  return util.worktree_root(vim.api.nvim_get_current_buf()) or vim.fn.getcwd()
+end
+
+local function get_explorer_picker()
+  local pickers = require("snacks").picker.get({ source = "explorer" })
+  return pickers[#pickers]
 end
 
 ---@param paths table<string, boolean>
@@ -95,7 +113,7 @@ end
 local function explorer_title(resolved, file_count)
   if resolved then
     return string.format(
-      "Changed files · %s vs %s (%d)",
+      "Changed · %s vs %s (%d)",
       resolved.branch_name,
       resolved.parent_ref,
       file_count
@@ -138,7 +156,7 @@ end
 
 ---@param file_path string
 ---@param info { rel: string, base: string?, untracked: boolean }?
-local function open_with_diff(file_path, info)
+open_with_diff = function(file_path, info)
   local opts = config.get()
   if vim.fn.filereadable(file_path) ~= 1 then
     notify("File not found: " .. (info and info.rel or file_path), vim.log.levels.WARN)
@@ -148,7 +166,6 @@ local function open_with_diff(file_path, info)
   vim.cmd("edit " .. vim.fn.fnameescape(file_path))
 
   if opts.diff.on_open == false then
-    notify("Use <leader>cr to add a review comment", vim.log.levels.INFO)
     return
   end
 
@@ -171,68 +188,120 @@ local function open_with_diff(file_path, info)
     local ok, err = pcall(diffthis.diffthis, base, { vertical = vertical })
     if not ok then
       notify("Could not open diff: " .. tostring(err), vim.log.levels.WARN)
+    end
+  end)
+end
+
+local function patch_explorer_confirm()
+  if M._default_confirm then
+    return
+  end
+  local explorer_actions = require("snacks.explorer.actions").actions
+  M._default_confirm = explorer_actions.confirm
+  explorer_actions.confirm = function(picker, item, action)
+    if picker.opts._cf_changed_filter and item and not item.dir and not picker.input.filter.meta.searching then
+      local file_path = item.file
+      if file_path then
+        vim.schedule(function()
+          open_with_diff(file_path, M._file_meta[norm(file_path)])
+        end)
+      end
       return
     end
-    notify("Vertical diff vs parent · <leader>cr to comment", vim.log.levels.INFO)
-  end)
+    return M._default_confirm(picker, item, action)
+  end
 end
 
 ---@param picker snacks.Picker
----@param item snacks.picker.Item
----@param action snacks.picker.Action?
-local function confirm_changed_file(picker, item, action)
-  local explorer_actions = require("snacks.explorer.actions").actions
-
-  if not item then
-    return
-  end
-  if picker.input.filter.meta.searching or item.dir then
-    explorer_actions.confirm(picker, item, action)
-    return
-  end
-
-  local file_path = item.file
-  if not file_path then
-    return
+---@param include string[]
+---@param worktree string
+---@param title string
+local function apply_filter(picker, include, worktree, title)
+  if not M._filter_active then
+    M._saved = {
+      include = picker.opts.include,
+      exclude = picker.opts.exclude,
+      title = picker.title,
+    }
   end
 
-  local close = not picker.opts.jump or picker.opts.jump.close ~= false
-  if close then
-    picker:close()
+  patch_explorer_confirm()
+
+  picker.opts.include = include
+  picker.opts.exclude = { "**" }
+  picker.opts._cf_changed_filter = true
+  picker.title = title
+
+  local Tree = require("snacks.explorer.tree")
+  Tree:refresh(worktree)
+  for path in pairs(M._file_meta) do
+    Tree:open(path)
   end
 
-  vim.schedule(function()
-    open_with_diff(file_path, M._file_meta[norm(file_path)])
-  end)
+  if norm(picker:cwd()) ~= norm(worktree) then
+    picker:set_cwd(worktree)
+  end
+
+  picker:find({ refresh = true })
+  picker:focus("list")
+  M._filter_active = true
+end
+
+---@param picker snacks.Picker
+local function clear_filter(picker)
+  picker.opts.include = M._saved.include
+  picker.opts.exclude = M._saved.exclude
+  picker.opts._cf_changed_filter = nil
+  if M._saved.title then
+    picker.title = M._saved.title
+  end
+  picker:find({ refresh = true })
+  M._filter_active = false
+  M._saved = {}
+  notify("Explorer: showing all files", vim.log.levels.INFO)
+end
+
+---@param worktree string
+local function open_explorer(worktree)
+  local Picker = require("snacks.picker.core.picker")
+  return Picker.new({
+    source = "explorer",
+    cwd = worktree,
+  })
 end
 
 function M.open()
-  local Snacks = require("snacks")
-  local cwd = util.worktree_root(vim.api.nvim_get_current_buf()) or vim.fn.getcwd()
+  local cwd = project_root()
   local include, meta, worktree, resolved = collect_explorer_paths(cwd)
-
   local file_count = vim.tbl_count(meta)
+
   if file_count == 0 then
     notify("No changed files found", vim.log.levels.INFO)
     return
   end
 
+  worktree = worktree or cwd
   M._file_meta = meta
 
+  local picker = get_explorer_picker()
   local opts = config.get()
-  local layout = opts.diff.layout or "vscode"
 
-  Snacks.explorer.open({
-    title = explorer_title(resolved, file_count),
-    cwd = worktree,
-    include = include,
-    exclude = { "**" },
-    tree = true,
-    follow_file = false,
-    layout = { preset = layout, preview = "file" },
-    jump = { close = true },
-    confirm = confirm_changed_file,
-  })
+  if M._filter_active and picker then
+    clear_filter(picker)
+    return
+  end
+
+  if not picker then
+    picker = open_explorer(worktree)
+  end
+
+  apply_filter(picker, include, worktree, explorer_title(resolved, file_count))
+
+  local toggle_hint = opts.diff.toggle ~= false and " · run again to show all files" or ""
+  notify(
+    string.format("Explorer filtered to %d changed file(s)%s", file_count, toggle_hint),
+    vim.log.levels.INFO
+  )
 end
 
 return M
