@@ -219,6 +219,9 @@ function M.open()
 
   M._file_meta = meta
 
+  local opts = config.get()
+  local layout = opts.diff.layout or "vscode"
+
   Snacks.explorer.open({
     title = explorer_title(resolved, file_count),
     cwd = worktree,
@@ -226,7 +229,7 @@ function M.open()
     exclude = { "**" },
     tree = true,
     follow_file = false,
-    layout = { preset = "sidebar", preview = false },
+    layout = { preset = layout, preview = "file" },
     jump = { close = true },
     confirm = confirm_changed_file,
   })

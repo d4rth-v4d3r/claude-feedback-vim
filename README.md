@@ -195,13 +195,14 @@ require("claude-feedback").setup({
   diff = {
     on_open = true,              -- vertical diff when opening from changed-files explorer
     vertical = true,
+    layout = "vscode",           -- floating; use "sidebar" only if you want it docked left
   },
 })
 ```
 
 ### Changed-files explorer (`:ClaudeFeedbackDiff`)
 
-Opens a **sidebar snacks explorer** filtered to changed files only (GitHub-style file tree). Press Enter on a file to open it in the editor with a **vertical diff vs the parent branch** (via gitsigns). Untracked files open without a diff. Use `]g` / `[g` in the explorer to jump between git changes.
+Opens a **floating snacks explorer** (vscode layout by default) filtered to changed files only — your normal sidebar file explorer stays open. Press Enter on a file to open it in the editor with a **vertical diff vs the parent branch** (via gitsigns). Untracked files open without a diff. Use `]g` / `[g` in the explorer to jump between git changes.
 
 State is persisted to `stdpath("data")/claude-feedback/state.json`.
 

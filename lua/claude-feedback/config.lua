@@ -31,6 +31,8 @@ M.defaults = {
   diff = {
     on_open = true,
     vertical = true,
+    -- Floating layout keeps LazyVim's sidebar explorer open (avoid preset = "sidebar")
+    layout = "vscode",
   },
   keys = {
     add = "<leader>cr",
