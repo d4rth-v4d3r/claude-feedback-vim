@@ -31,7 +31,6 @@ M.defaults = {
   diff = {
     on_open = true,
     vertical = true,
-    toggle = true, -- run :ClaudeFeedbackDiff again to clear the filter
   },
   keys = {
     add = "<leader>ra",

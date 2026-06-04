@@ -131,7 +131,7 @@ Uses `<leader>r*` (review) to avoid LazyVim conflicts (`<leader>cm` = Mason, `<l
 | `:ClaudeFeedbackPending` | Pending picker |
 | `:ClaudeFeedbackCopy` | Copy to clipboard |
 | `:ClaudeFeedbackSetParent` | Choose base/parent branch |
-| `:ClaudeFeedbackDiff` | Filtered snacks explorer of changed files (opens with vertical diff) |
+| `:ClaudeFeedbackDiff` | Changed-files picker (opens with vertical diff on Enter) |
 | `:ClaudeFeedbackResolved` | Resolved batch history |
 | `:ClaudeFeedbackClear` | Clear pending comments |
 
@@ -199,7 +199,6 @@ require("claude-feedback").setup({
   diff = {
     on_open = true,
     vertical = true,
-    toggle = true,             -- run :ClaudeFeedbackDiff again to clear filter
   },
 })
 ```

@@ -123,6 +123,7 @@ function M.pending(worktree_root)
     title = pending_title(cwd),
     format = "text",
     items = items,
+    layout = { preview = false },
     preview = "none",
     confirm = function(picker, item)
       if not item or not item.item then

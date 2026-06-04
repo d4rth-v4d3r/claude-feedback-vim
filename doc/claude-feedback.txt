@@ -27,7 +27,7 @@ COMMANDS                                              *claude-feedback-commands*
 :ClaudeFeedbackPending      Pending picker with changed files
 :ClaudeFeedbackCopy         Copy to clipboard (primary send)
 :ClaudeFeedbackSetParent    Set parent/base branch
-:ClaudeFeedbackDiff         Filtered explorer of changed files (vertical diff on open)
+:ClaudeFeedbackDiff         Changed-files picker (vertical diff on Enter)
 :ClaudeFeedbackResolved     Resolved batches
 :ClaudeFeedbackClear        Clear pending comments
 

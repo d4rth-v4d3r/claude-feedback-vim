@@ -70,7 +70,7 @@ local function setup_commands()
 
   vim.api.nvim_create_user_command("ClaudeFeedbackDiff", function()
     M.diff()
-  end, { desc = "Browse changed files in filtered explorer" })
+  end, { desc = "Browse changed files with side-by-side diff" })
 
   vim.api.nvim_create_user_command("ClaudeFeedbackResolved", function()
     M.resolved()
@@ -97,6 +97,10 @@ function M.setup(opts)
   setup_autocmds()
   setup_commands()
   signs.refresh_all()
+
+  vim.schedule(function()
+    pcall(require("claude-feedback.ui.changed_explorer").restore_explorer)
+  end)
 end
 
 function M.add_comment()
