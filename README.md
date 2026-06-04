@@ -206,7 +206,17 @@ require("claude-feedback").setup({
 
 ### Changed-files explorer (`:ClaudeFeedbackDiff`)
 
-Applies a **filter to your existing LazyVim snacks explorer** (sidebar) — changed files and their parent folders only. Does not open a separate floating picker. Press Enter on a file to open it with a **vertical diff vs the parent branch** (via gitsigns). Run `:ClaudeFeedbackDiff` again to clear the filter and show all files.
+Applies a **filter to your existing LazyVim snacks explorer** (sidebar) — changed files and their parent folders only. Does not open a separate floating picker. Press **Enter** (or `l`) on a file to open it with a **vertical diff vs the parent branch** (via gitsigns). Run `:ClaudeFeedbackDiff` again to clear the filter and show all files.
+
+**GitHub-style review workflow**
+
+1. `<leader>e` — open explorer
+2. `:ClaudeFeedbackDiff` or `<leader>rd` — filter to changed files
+3. Enter on a file — side-by-side diff opens (your version left, parent branch right)
+4. `<leader>ra` on a line — add inline comment
+5. `<leader>ry` — copy comments + file list to clipboard
+
+**Manual fallback** (if diff-on-open fails): open the file normally, then `<leader>ghd` (gitsigns diff vs index). For branch review, use Enter from the filtered explorer — that diffs vs the merge-base of your parent branch.
 
 State is persisted to `stdpath("data")/claude-feedback/state.json`.
 

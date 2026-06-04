@@ -11,9 +11,54 @@ local M = {}
 M._file_meta = {}
 M._filter_active = false
 M._saved = {}
-M._default_confirm = nil
 
 local open_with_diff
+
+local function default_explorer_confirm()
+  return require("snacks.explorer.actions").actions.confirm
+end
+
+---@param picker snacks.Picker
+local function install_picker_confirm(picker)
+  if not M._saved.default_confirm then
+    M._saved.default_confirm = default_explorer_confirm()
+  end
+
+  local ref = picker:ref()
+  local PickerActions = require("snacks.picker.core.actions")
+  local default = M._saved.default_confirm
+
+  local function cf_confirm(p, item, action)
+    if p.opts._cf_changed_filter and item and not item.dir and not p.input.filter.meta.searching then
+      local file_path = item.file
+      if file_path then
+        vim.schedule(function()
+          open_with_diff(file_path, M._file_meta[file_path])
+        end)
+      end
+      return
+    end
+    return default(p, item, action)
+  end
+
+  local wrapped = PickerActions.wrap(cf_confirm, ref, "confirm")
+  picker.opts.win.input.actions.confirm = wrapped
+  picker.opts.win.list.actions.confirm = wrapped
+  picker.opts.win.preview.actions.confirm = wrapped
+end
+
+---@param picker snacks.Picker
+local function restore_picker_confirm(picker)
+  if not M._saved.default_confirm then
+    return
+  end
+  local ref = picker:ref()
+  local PickerActions = require("snacks.picker.core.actions")
+  local wrapped = PickerActions.wrap(M._saved.default_confirm, ref, "confirm")
+  picker.opts.win.input.actions.confirm = wrapped
+  picker.opts.win.list.actions.confirm = wrapped
+  picker.opts.win.preview.actions.confirm = wrapped
+end
 
 local function notify(msg, level)
   notify_mod.show(msg, level)
@@ -195,8 +240,8 @@ open_with_diff = function(file_path, info)
     return
   end
 
-  local ok_diff, diffthis = pcall(require, "gitsigns.actions.diffthis")
-  if not ok_diff then
+  local ok_gs, gs = pcall(require, "gitsigns")
+  if not ok_gs then
     notify("gitsigns not available — install gitsigns.nvim for diff-on-open", vim.log.levels.WARN)
     return
   end
@@ -206,31 +251,12 @@ open_with_diff = function(file_path, info)
   local base = info and info.base or nil
 
   when_gitsigns_attached(bufnr, function()
-    local ok, err = pcall(diffthis.diffthis, base, { vertical = vertical })
-    if not ok then
-      notify("Could not open diff: " .. tostring(err), vim.log.levels.WARN)
-    end
-  end)
-end
-
-local function patch_explorer_confirm()
-  if M._default_confirm then
-    return
-  end
-  local explorer_actions = require("snacks.explorer.actions").actions
-  M._default_confirm = explorer_actions.confirm
-  explorer_actions.confirm = function(picker, item, action)
-    if picker.opts._cf_changed_filter and item and not item.dir and not picker.input.filter.meta.searching then
-      local file_path = item.file
-      if file_path then
-        vim.schedule(function()
-          open_with_diff(file_path, M._file_meta[file_path])
-        end)
+    gs.diffthis(base, { vertical = vertical }, function(err)
+      if err then
+        notify("Could not open diff: " .. err, vim.log.levels.WARN)
       end
-      return
-    end
-    return M._default_confirm(picker, item, action)
-  end
+    end)
+  end)
 end
 
 ---@param picker snacks.Picker
@@ -246,7 +272,7 @@ local function apply_filter(picker, include, worktree, title)
     }
   end
 
-  patch_explorer_confirm()
+  install_picker_confirm(picker)
 
   if norm(picker:cwd()) ~= norm(worktree) then
     picker:set_cwd(worktree)
@@ -276,6 +302,7 @@ local function clear_filter(picker)
   if M._saved.title then
     picker.title = M._saved.title
   end
+  restore_picker_confirm(picker)
   picker:find({ refresh = true })
   M._filter_active = false
   M._saved = {}
