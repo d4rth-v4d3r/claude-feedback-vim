@@ -128,9 +128,9 @@ function M.pending(worktree_root)
       local preview = store.comment_body_for_send(c):match("^[^\n]+") or ""
       items[#items + 1] = {
         text = string.format("%d. %s:%d — %s", i, c.relative_path, c.line, preview),
-        comment = c,
         file = c.file_path,
-        line = c.line,
+        line = tostring(c.line),
+        item = { comment_id = c.id, comment = c },
       }
     end
   else
@@ -142,10 +142,11 @@ function M.pending(worktree_root)
     items = items,
     preview = "none",
     confirm = function(picker, item)
-      if item and item.comment then
+      local comment = item and item.item and item.item.comment
+      if comment then
         picker:close()
         vim.schedule(function()
-          thread.open(item.comment.id)
+          thread.open(comment.id)
         end)
       end
     end,
@@ -211,7 +212,7 @@ function M.resolved()
         batch.created_at or "unknown",
         #(batch.comments or {})
       ),
-      batch = batch,
+      item = { batch = batch },
       preview = {
         text = batch.copied_text or "",
         ft = "markdown",
@@ -231,14 +232,15 @@ function M.resolved()
       cf_rollback = {
         desc = "Rollback batch",
         action = function(picker, item)
-          if not item or not item.batch then
+          local batch = item and item.item and item.item.batch
+          if not batch then
             return
           end
           store.update(function(state)
             for idx, b in ipairs(state.reviews) do
-              if b.id == item.batch.id then
+              if b.id == batch.id then
                 table.remove(state.reviews, idx)
-                state.pending = vim.list_extend(item.batch.comments or {}, state.pending)
+                state.pending = vim.list_extend(batch.comments or {}, state.pending)
                 break
               end
             end
