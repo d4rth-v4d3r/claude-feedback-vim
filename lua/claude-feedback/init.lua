@@ -66,11 +66,7 @@ local function setup_commands()
 
   vim.api.nvim_create_user_command("ClaudeFeedbackSetParent", function()
     M.set_parent()
-  end, { desc = "Set diff parent branch" })
-
-  vim.api.nvim_create_user_command("ClaudeFeedbackDiff", function()
-    M.diff()
-  end, { desc = "Browse changed files with side-by-side diff" })
+  end, { desc = "Set parent branch for changed-files list" })
 
   vim.api.nvim_create_user_command("ClaudeFeedbackResolved", function()
     M.resolved()
@@ -97,10 +93,6 @@ function M.setup(opts)
   setup_autocmds()
   setup_commands()
   signs.refresh_all()
-
-  vim.schedule(function()
-    pcall(require("claude-feedback.ui.changed_explorer").restore_explorer)
-  end)
 end
 
 function M.add_comment()
@@ -160,10 +152,6 @@ end
 
 function M.set_parent()
   ui.set_parent()
-end
-
-function M.diff()
-  ui.open_diff()
 end
 
 function M.resolved()

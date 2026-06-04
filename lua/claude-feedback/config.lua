@@ -28,10 +28,6 @@ M.defaults = {
     include_diff_instruction = true,
     include_absolute_paths = true,
   },
-  diff = {
-    on_open = true,
-    vertical = true,
-  },
   keys = {
     add = "<leader>ra",
     thread = "<leader>rt",
@@ -39,7 +35,6 @@ M.defaults = {
     prev = "[r",
     menu = "<leader>rv",
     copy = "<leader>ry",
-    diff = "<leader>rd",
   },
 }
 

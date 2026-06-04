@@ -54,7 +54,7 @@ function M.copy(worktree_root)
     end, state.pending)
   end)
 
-  notify(string.format("Copied %d comment(s) + changed files to clipboard", #comments))
+  notify(string.format("Copied %d comment(s) to clipboard", #comments))
 end
 
 function M.clear(worktree_root)
@@ -87,17 +87,8 @@ end
 function M.pending(worktree_root)
   local Snacks = require("snacks")
   local cwd = worktree_root or util.worktree_root(vim.api.nvim_get_current_buf()) or vim.fn.getcwd()
-  local changed = changed_files.collect(cwd)
   local items = {}
   local comments = filter_by_worktree(store.get_active_pending(), worktree_root)
-
-  local total_changed = #changed.unstaged + #changed.branch
-  if total_changed > 0 then
-    items[#items + 1] = {
-      text = string.format("Browse %d changed file(s) with diff preview", total_changed),
-      item = { action = "files" },
-    }
-  end
 
   if #comments > 0 then
     for i, c in ipairs(comments) do
@@ -115,7 +106,7 @@ function M.pending(worktree_root)
   end
 
   items[#items + 1] = {
-    text = "Keys: Enter=open · f=changed files · a=add · y=copy · p=parent · c=clear",
+    text = "Keys: Enter=thread · a=add · y=copy · p=parent · c=clear",
     item = { hint = true },
   }
 
@@ -129,13 +120,6 @@ function M.pending(worktree_root)
       if not item or not item.item then
         return
       end
-      if item.item.action == "files" then
-        picker:close()
-        vim.schedule(function()
-          M.open_diff()
-        end)
-        return
-      end
       local comment_id = item.item.comment_id
       if comment_id then
         picker:close()
@@ -145,17 +129,10 @@ function M.pending(worktree_root)
         return
       end
       if item.item.hint then
-        notify("Use f=files, a=add, y=copy, p=parent, c=clear", vim.log.levels.INFO)
+        notify("Use a=add, y=copy, p=parent, c=clear", vim.log.levels.INFO)
       end
     end,
     actions = {
-      cf_files = {
-        desc = "Browse changed files",
-        action = function(picker)
-          picker:close()
-          vim.schedule(M.open_diff)
-        end,
-      },
       cf_copy = {
         desc = "Copy to clipboard",
         action = function(picker)
@@ -194,7 +171,6 @@ function M.pending(worktree_root)
     win = {
       list = {
         keys = {
-          ["f"] = "cf_files",
           ["y"] = "cf_copy",
           ["c"] = "cf_clear",
           ["p"] = "cf_parent",
@@ -232,6 +208,11 @@ function M.resolved()
     return
   end
 
+  items[#items + 1] = {
+    text = "Keys: Enter=copy · r=rollback to pending",
+    item = { hint = true },
+  }
+
   Snacks.picker.pick({
     title = "Code Review · Resolved",
     format = "text",
@@ -249,8 +230,9 @@ function M.resolved()
     end,
     actions = {
       cf_rollback = {
-        desc = "Rollback batch",
+        desc = "Rollback batch to pending",
         action = function(picker, item)
+          item = item or picker:current()
           local batch_id = item and item.item and item.item.batch_id
           local batch = batch_id and store.find_batch_by_id(batch_id)
           if not batch then
@@ -343,10 +325,6 @@ function M.set_parent()
       end
     end
   end)
-end
-
-function M.open_diff(_file_path)
-  require("claude-feedback.ui.changed_explorer").open()
 end
 
 return M

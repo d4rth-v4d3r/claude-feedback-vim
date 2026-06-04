@@ -1,46 +1,41 @@
-*claude-feedback.txt*  Claude Feedback for LazyVim
+*claude-feedback.txt*  Code review comments for Neovim
 
 ==============================================================================
-CONTENTS                                              *claude-feedback-contents*
+INTRODUCTION                                         *claude-feedback*
 
-Introduction                                          |claude-feedback-intro|
-Commands                                              |claude-feedback-commands|
-Keymaps                                               |claude-feedback-keymaps|
-Configuration                                         |claude-feedback-config|
+Collect line-level code review comments, copy a formatted batch to the
+clipboard (comments + changed files list), and manage pending/resolved batches.
 
-==============================================================================
-INTRODUCTION                                          *claude-feedback-intro*
+Use diffview.nvim or your preferred diff tool for side-by-side review.
 
-Collect line-level code review comments and copy formatted batches to the
-system clipboard for Claude Code or other tools.
-
-Requires snacks.nvim, gitsigns.nvim (for diff-on-open), and git.
+Requires snacks.nvim and git.
 
 ==============================================================================
 COMMANDS                                              *claude-feedback-commands*
 
-:ClaudeFeedbackAdd          Add review comment at cursor
-:ClaudeFeedbackThread       Open thread float at cursor
-:ClaudeFeedbackNext         Jump to next comment in buffer
-:ClaudeFeedbackPrev         Jump to previous comment in buffer
-:ClaudeFeedbackMenu         Quick menu
-:ClaudeFeedbackPending      Pending picker with changed files
-:ClaudeFeedbackCopy         Copy to clipboard (primary send)
-:ClaudeFeedbackSetParent    Set parent/base branch
-:ClaudeFeedbackDiff         Changed-files picker (vertical diff on Enter)
-:ClaudeFeedbackResolved     Resolved batches
-:ClaudeFeedbackClear        Clear pending comments
+:ClaudeFeedbackAdd           Add review comment at cursor
+:ClaudeFeedbackThread        Open thread float at cursor
+:ClaudeFeedbackNext          Jump to next review comment
+:ClaudeFeedbackPrev          Jump to previous review comment
+:ClaudeFeedbackMenu          Quick menu
+:ClaudeFeedbackPending       Pending picker
+:ClaudeFeedbackCopy          Copy batch to clipboard
+:ClaudeFeedbackSetParent     Choose base/parent branch
+:ClaudeFeedbackResolved      Resolved batches (rollback with r)
+:ClaudeFeedbackClear         Clear pending comments
 
 ==============================================================================
 KEYMAPS (defaults)                                    *claude-feedback-keymaps*
 
 <leader>ra    Add review comment
-<leader>rt    Open thread at cursor
+<leader>rt    Open thread at cursor (reply/edit/delete inside)
 <leader>rv    Quick menu
 <leader>ry    Copy to clipboard
-<leader>rd    Browse changed files
 ]r            Next review comment
 [r            Previous review comment
+
+Thread float: r=reply  e=edit  d=delete  q=close
+Resolved picker: Enter=copy  r=rollback to pending
 
 ==============================================================================
 CONFIGURATION                                         *claude-feedback-config*
@@ -49,6 +44,7 @@ CONFIGURATION                                         *claude-feedback-config*
   require("claude-feedback").setup({
     changed_files = { mode = "both" },
     parent_branch = { fallback = "main" },
+    copy = { changed_files_mode = "branch" },
   })
 <
 
