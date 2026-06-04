@@ -28,7 +28,8 @@ No Graphite, Git Town, or `gh` — plain git only.
 | Requirement | Notes |
 |-------------|-------|
 | Neovim **0.10+** | Uses `vim.system` |
-| [snacks.nvim](https://github.com/folke/snacks.nvim) | Input, picker, float windows |
+| [snacks.nvim](https://github.com/folke/snacks.nvim) | Input, picker, explorer, float windows |
+| [gitsigns.nvim](https://github.com/levouh/gitsigns.nvim) | Vertical diff-on-open in changed-files explorer (LazyVim default) |
 | `git` | On `PATH` |
 | Clipboard tool | `pbcopy` (macOS), `wl-copy`, or `xclip` |
 
@@ -126,7 +127,7 @@ Then restart Neovim or run `:Lazy sync`.
 | `:ClaudeFeedbackPending` | Pending picker |
 | `:ClaudeFeedbackCopy` | Copy to clipboard |
 | `:ClaudeFeedbackSetParent` | Choose base/parent branch |
-| `:ClaudeFeedbackDiff` | Browse changed files and open in editor |
+| `:ClaudeFeedbackDiff` | Filtered snacks explorer of changed files (opens with vertical diff) |
 | `:ClaudeFeedbackResolved` | Resolved batch history |
 | `:ClaudeFeedbackClear` | Clear pending comments |
 
@@ -191,8 +192,16 @@ require("claude-feedback").setup({
     include_diff_instruction = true,
     include_absolute_paths = true,
   },
+  diff = {
+    on_open = true,              -- vertical diff when opening from changed-files explorer
+    vertical = true,
+  },
 })
 ```
+
+### Changed-files explorer (`:ClaudeFeedbackDiff`)
+
+Opens a **sidebar snacks explorer** filtered to changed files only (GitHub-style file tree). Press Enter on a file to open it in the editor with a **vertical diff vs the parent branch** (via gitsigns). Untracked files open without a diff. Use `]g` / `[g` in the explorer to jump between git changes.
 
 State is persisted to `stdpath("data")/claude-feedback/state.json`.
 

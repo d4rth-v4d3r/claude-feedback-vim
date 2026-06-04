@@ -70,7 +70,7 @@ local function setup_commands()
 
   vim.api.nvim_create_user_command("ClaudeFeedbackDiff", function()
     M.diff()
-  end, { desc = "Browse changed files with diff preview" })
+  end, { desc = "Browse changed files in filtered explorer" })
 
   vim.api.nvim_create_user_command("ClaudeFeedbackResolved", function()
     M.resolved()

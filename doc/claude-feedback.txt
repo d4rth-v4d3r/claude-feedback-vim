@@ -14,7 +14,7 @@ INTRODUCTION                                          *claude-feedback-intro*
 Collect line-level code review comments and copy formatted batches to the
 system clipboard for Claude Code or other tools.
 
-Requires snacks.nvim and git.
+Requires snacks.nvim, gitsigns.nvim (for diff-on-open), and git.
 
 ==============================================================================
 COMMANDS                                              *claude-feedback-commands*
@@ -27,7 +27,7 @@ COMMANDS                                              *claude-feedback-commands*
 :ClaudeFeedbackPending      Pending picker with changed files
 :ClaudeFeedbackCopy         Copy to clipboard (primary send)
 :ClaudeFeedbackSetParent    Set parent/base branch
-:ClaudeFeedbackDiff         Diff current file vs parent
+:ClaudeFeedbackDiff         Filtered explorer of changed files (vertical diff on open)
 :ClaudeFeedbackResolved     Resolved batches
 :ClaudeFeedbackClear        Clear pending comments
 

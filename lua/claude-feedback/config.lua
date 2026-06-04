@@ -28,6 +28,10 @@ M.defaults = {
     include_diff_instruction = true,
     include_absolute_paths = true,
   },
+  diff = {
+    on_open = true,
+    vertical = true,
+  },
   keys = {
     add = "<leader>cr",
     thread = "<leader>ct",
