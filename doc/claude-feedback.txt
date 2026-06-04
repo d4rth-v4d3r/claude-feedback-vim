@@ -34,12 +34,13 @@ COMMANDS                                              *claude-feedback-commands*
 ==============================================================================
 KEYMAPS (defaults)                                    *claude-feedback-keymaps*
 
-<leader>cr    Add review comment
-<leader>ct    Open thread at cursor
-<leader>cm    Quick menu
-<leader>cy    Copy to clipboard
-]c            Next review comment
-[c            Previous review comment
+<leader>ra    Add review comment
+<leader>rt    Open thread at cursor
+<leader>rv    Quick menu
+<leader>ry    Copy to clipboard
+<leader>rd    Browse changed files
+]r            Next review comment
+[r            Previous review comment
 
 ==============================================================================
 CONFIGURATION                                         *claude-feedback-config*

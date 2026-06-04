@@ -34,12 +34,13 @@ M.defaults = {
     toggle = true, -- run :ClaudeFeedbackDiff again to clear the filter
   },
   keys = {
-    add = "<leader>cr",
-    thread = "<leader>ct",
+    add = "<leader>ra",
+    thread = "<leader>rt",
     next = "]r",
     prev = "[r",
-    menu = "<leader>cm",
-    copy = "<leader>cy",
+    menu = "<leader>rv",
+    copy = "<leader>ry",
+    diff = "<leader>rd",
   },
 }
 

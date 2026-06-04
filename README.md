@@ -45,12 +45,13 @@ return {
   dependencies = { "folke/snacks.nvim" },
   opts = {},
   keys = {
-    { "<leader>cr", function() require("claude-feedback").add_comment() end, desc = "Add review comment" },
-    { "<leader>ct", function() require("claude-feedback").thread() end, desc = "Open review thread" },
-    { "<leader>cm", function() require("claude-feedback").menu() end, desc = "Code review menu" },
-    { "<leader>cy", function() require("claude-feedback").copy() end, desc = "Copy review to clipboard" },
-    { "]c", function() require("claude-feedback").next_comment() end, desc = "Next review comment" },
-    { "[c", function() require("claude-feedback").prev_comment() end, desc = "Prev review comment" },
+    { "<leader>ra", function() require("claude-feedback").add_comment() end, desc = "Add review comment" },
+    { "<leader>rt", function() require("claude-feedback").thread() end, desc = "Open review thread" },
+    { "<leader>rv", function() require("claude-feedback").menu() end, desc = "Code review menu" },
+    { "<leader>ry", function() require("claude-feedback").copy() end, desc = "Copy review to clipboard" },
+    { "<leader>rd", function() require("claude-feedback").diff() end, desc = "Browse changed files" },
+    { "]r", function() require("claude-feedback").next_comment() end, desc = "Next review comment" },
+    { "[r", function() require("claude-feedback").prev_comment() end, desc = "Prev review comment" },
   },
   config = function(_, opts)
     require("claude-feedback").setup(opts)
@@ -88,23 +89,26 @@ Then restart Neovim or run `:Lazy sync`.
 ## Quick start
 
 1. Open a file in a git repo
-2. Put cursor on a line → `<leader>cr` → type your review comment
+2. Put cursor on a line → `<leader>ra` → type your review comment
 3. Repeat for other lines/files
-4. `<leader>cm` → **Open pending list** (or `:ClaudeFeedbackPending`)
+4. `<leader>rv` → **Open pending list** (or `:ClaudeFeedbackPending`)
    - Header shows changed files (unstaged + vs parent branch)
    - Press `y` in the picker to **copy to clipboard**
 5. Paste into Claude Code or your terminal
 
 ### Default keymaps
 
+Uses `<leader>r*` (review) to avoid LazyVim conflicts (`<leader>cm` = Mason, `<leader>cr` = LSP rename).
+
 | Key | Action |
 |-----|--------|
-| `<leader>cr` | Add comment at cursor |
-| `<leader>ct` | Open thread float at cursor |
-| `<leader>cm` | Quick menu |
-| `<leader>cy` | Copy batch + changed files to clipboard |
-| `]c` | Next review comment in buffer |
-| `[c` | Previous review comment in buffer |
+| `<leader>ra` | Add comment at cursor |
+| `<leader>rt` | Open thread float at cursor |
+| `<leader>rv` | Quick menu |
+| `<leader>ry` | Copy batch + changed files to clipboard |
+| `<leader>rd` | Browse changed files (filtered explorer) |
+| `]r` | Next review comment in buffer |
+| `[r` | Previous review comment in buffer |
 
 ### Pending picker keys
 
