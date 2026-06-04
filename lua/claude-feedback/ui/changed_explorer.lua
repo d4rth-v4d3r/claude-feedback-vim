@@ -3,10 +3,11 @@ local changed_files = require("claude-feedback.git.changed_files")
 local config = require("claude-feedback.config")
 local parent = require("claude-feedback.git.parent")
 local util = require("claude-feedback.git.util")
+local Tree = require("snacks.explorer.tree")
 
 local M = {}
 
----@type table<string, { rel: string, base: string?, untracked: boolean }>
+---@type table<string, { rel: string, abs: string, base: string?, untracked: boolean }>
 M._file_meta = {}
 M._filter_active = false
 M._saved = {}
@@ -19,7 +20,18 @@ local function notify(msg, level)
 end
 
 local function norm(path)
-  return vim.fn.fnamemodify(path, ":p")
+  if svim and svim.fs and svim.fs.normalize then
+    return svim.fs.normalize(path)
+  end
+  return vim.fn.fnamemodify(path, ":p"):gsub("/$", "")
+end
+
+--- snacks explorer filters on Tree node.path, not absolute filesystem paths
+---@param abs_path string
+---@return string?
+local function tree_path(abs_path)
+  local node = Tree:find(norm(abs_path))
+  return node and node.path or nil
 end
 
 local function project_root()
@@ -40,26 +52,33 @@ end
 ---@param rel_path string
 local function add_path_and_ancestors(paths, worktree, rel_path)
   local full = norm(worktree .. "/" .. rel_path)
-  paths[full] = true
-  local dir = vim.fs.dirname(full)
-  worktree = norm(worktree)
-  while dir and #dir >= #worktree do
-    paths[dir] = true
-    if dir == worktree then
+  local node = Tree:find(full)
+  if not node then
+    return
+  end
+  local wt_node = Tree:find(norm(worktree))
+  local current = node
+  while current do
+    paths[current.path] = true
+    if current == wt_node then
       break
     end
-    dir = vim.fs.dirname(dir)
+    current = current.parent
   end
 end
 
----@param meta table<string, { rel: string, base: string?, untracked: boolean }>
+---@param meta table<string, { rel: string, abs: string, base: string?, untracked: boolean }>
 ---@param worktree string
 ---@param f { path: string, status: string }
 ---@param section string
 ---@param merge_base_sha string?
 local function add_file_meta(meta, worktree, f, section, merge_base_sha)
   local full = norm(worktree .. "/" .. f.path)
-  local existing = meta[full]
+  local tp = tree_path(full)
+  if not tp then
+    return
+  end
+  local existing = meta[tp]
   if existing and existing.base then
     return
   end
@@ -68,14 +87,15 @@ local function add_file_meta(meta, worktree, f, section, merge_base_sha)
   if not untracked and section == "branch" and merge_base_sha then
     base = merge_base_sha
   end
-  meta[full] = {
+  meta[tp] = {
     rel = f.path,
+    abs = full,
     base = base,
     untracked = untracked,
   }
 end
 
----@return string[], table<string, { rel: string, base: string?, untracked: boolean }>, string?, table?
+---@return string[], table<string, { rel: string, abs: string, base: string?, untracked: boolean }>, string?, table?
 local function collect_explorer_paths(cwd)
   local worktree = util.worktree_root(cwd)
   if not worktree then
@@ -154,16 +174,17 @@ local function when_gitsigns_attached(bufnr, fn)
   end
 end
 
----@param file_path string
----@param info { rel: string, base: string?, untracked: boolean }?
+---@param file_path string explorer tree path (from item.file)
+---@param info { rel: string, abs: string, base: string?, untracked: boolean }?
 open_with_diff = function(file_path, info)
   local opts = config.get()
-  if vim.fn.filereadable(file_path) ~= 1 then
+  local abs = info and info.abs or file_path
+  if vim.fn.filereadable(abs) ~= 1 then
     notify("File not found: " .. (info and info.rel or file_path), vim.log.levels.WARN)
     return
   end
 
-  vim.cmd("edit " .. vim.fn.fnameescape(file_path))
+  vim.cmd("edit " .. vim.fn.fnameescape(abs))
 
   if opts.diff.on_open == false then
     return
@@ -203,7 +224,7 @@ local function patch_explorer_confirm()
       local file_path = item.file
       if file_path then
         vim.schedule(function()
-          open_with_diff(file_path, M._file_meta[norm(file_path)])
+          open_with_diff(file_path, M._file_meta[file_path])
         end)
       end
       return
@@ -227,19 +248,19 @@ local function apply_filter(picker, include, worktree, title)
 
   patch_explorer_confirm()
 
+  if norm(picker:cwd()) ~= norm(worktree) then
+    picker:set_cwd(worktree)
+  end
+
+  Tree:refresh(worktree)
+
   picker.opts.include = include
   picker.opts.exclude = { "**" }
   picker.opts._cf_changed_filter = true
   picker.title = title
 
-  local Tree = require("snacks.explorer.tree")
-  Tree:refresh(worktree)
-  for path in pairs(M._file_meta) do
-    Tree:open(path)
-  end
-
-  if norm(picker:cwd()) ~= norm(worktree) then
-    picker:set_cwd(worktree)
+  for _, info in pairs(M._file_meta) do
+    Tree:open(info.abs)
   end
 
   picker:find({ refresh = true })
