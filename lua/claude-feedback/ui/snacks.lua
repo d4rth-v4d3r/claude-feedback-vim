@@ -374,17 +374,11 @@ local function build_diff_picker_items(cwd)
       return
     end
     seen[f.path] = true
-    local full = worktree .. "/" .. f.path
-    local preview_text = diff_text_for_file(worktree, f.path, section, resolved and resolved.merge_base_sha)
+    local full = vim.fn.fnamemodify(worktree .. "/" .. f.path, ":p")
     items[#items + 1] = {
       text = string.format("[%s] %s %s", label, changed_files.format_status(f.status), f.path),
       file = full,
       item = { rel = f.path, section = section },
-      preview = {
-        text = preview_text ~= "" and preview_text or "(no diff)",
-        ft = "diff",
-        loc = false,
-      },
     }
   end
 
@@ -415,7 +409,19 @@ local function open_file_diff_split(worktree, rel_path, section, merge_base_sha)
   vim.bo[buf].modifiable = false
 end
 
-function M.open_diff(file_path)
+local function open_file_in_editor(file_path)
+  if not file_path or file_path == "" then
+    return
+  end
+  if vim.fn.filereadable(file_path) ~= 1 then
+    notify("File not found: " .. file_path, vim.log.levels.WARN)
+    return
+  end
+  vim.cmd("edit " .. vim.fn.fnameescape(file_path))
+  notify("Use <leader>cr to add a review comment on this file", vim.log.levels.INFO)
+end
+
+function M.open_diff(_file_path)
   local Snacks = require("snacks")
   local cwd = util.worktree_root(vim.api.nvim_get_current_buf()) or vim.fn.getcwd()
   local items, resolved = build_diff_picker_items(cwd)
@@ -428,25 +434,45 @@ function M.open_diff(file_path)
   local worktree = resolved and resolved.worktree_root or util.worktree_root(cwd)
   local merge_base = resolved and resolved.merge_base_sha
 
+  table.insert(items, 1, {
+    text = "Enter=open file · d=diff split · q=close",
+    item = { hint = true },
+  })
+
   Snacks.picker.pick({
-    title = "Changed files · diff",
+    title = "Changed files",
     format = "text",
-    preview = "preview",
+    preview = "file",
     items = items,
     confirm = function(picker, item)
-      if not item or not item.file then
+      if not item or item.item and item.item.hint then
+        return
+      end
+      if not item.file then
         return
       end
       picker:close()
       vim.schedule(function()
-        vim.cmd("edit " .. vim.fn.fnameescape(item.file))
+        open_file_in_editor(item.file)
       end)
     end,
     actions = {
+      cf_open_file = {
+        desc = "Open file in editor",
+        action = function(picker, item)
+          if not item or not item.file or (item.item and item.item.hint) then
+            return
+          end
+          picker:close()
+          vim.schedule(function()
+            open_file_in_editor(item.file)
+          end)
+        end,
+      },
       cf_open_diff = {
         desc = "Open diff in split",
         action = function(picker, item)
-          if not item or not item.item or not worktree then
+          if not item or not item.item or not worktree or item.item.hint then
             return
           end
           picker:close()
@@ -459,6 +485,7 @@ function M.open_diff(file_path)
     win = {
       list = {
         keys = {
+          ["<cr>"] = "cf_open_file",
           ["d"] = "cf_open_diff",
         },
       },

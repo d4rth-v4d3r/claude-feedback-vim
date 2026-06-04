@@ -126,7 +126,7 @@ Then restart Neovim or run `:Lazy sync`.
 | `:ClaudeFeedbackPending` | Pending picker |
 | `:ClaudeFeedbackCopy` | Copy to clipboard |
 | `:ClaudeFeedbackSetParent` | Choose base/parent branch |
-| `:ClaudeFeedbackDiff` | Browse changed files with diff preview |
+| `:ClaudeFeedbackDiff` | Browse changed files and open in editor |
 | `:ClaudeFeedbackResolved` | Resolved batch history |
 | `:ClaudeFeedbackClear` | Clear pending comments |
 
