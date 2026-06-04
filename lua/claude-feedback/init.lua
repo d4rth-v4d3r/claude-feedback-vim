@@ -70,7 +70,7 @@ local function setup_commands()
 
   vim.api.nvim_create_user_command("ClaudeFeedbackDiff", function()
     M.diff()
-  end, { desc = "Open diff vs parent branch" })
+  end, { desc = "Browse changed files with diff preview" })
 
   vim.api.nvim_create_user_command("ClaudeFeedbackResolved", function()
     M.resolved()

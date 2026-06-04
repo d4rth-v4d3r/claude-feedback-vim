@@ -70,85 +70,69 @@ function M.clear(worktree_root)
   notify("Pending review comments cleared")
 end
 
-local function build_header_items(cwd)
-  local items = {}
+local function pending_title(cwd)
   local resolved = parent.resolve(cwd)
   local changed = changed_files.collect(cwd)
-
+  local parts = { "Code Review · Pending" }
   if resolved then
-    items[#items + 1] = {
-      text = string.format(
-        "[ %s · parent: %s (%s) ]",
-        resolved.branch_name,
-        resolved.parent_ref,
-        parent.format_source(resolved.source)
-      ),
-      disabled = true,
-    }
+    parts[#parts + 1] = string.format("%s vs %s", resolved.branch_name, resolved.parent_ref)
   end
-
-  if #changed.unstaged > 0 then
-    items[#items + 1] = {
-      text = string.format("Changed (unstaged): %d file(s)", #changed.unstaged),
-      disabled = true,
-    }
-    for _, f in ipairs(changed.unstaged) do
-      items[#items + 1] = {
-        text = string.format("  %s %s", changed_files.format_status(f.status), f.path),
-        disabled = true,
-      }
-    end
+  local total = #changed.unstaged + #changed.branch
+  if total > 0 then
+    parts[#parts + 1] = string.format("%d changed file(s)", total)
   end
-
-  if #changed.branch > 0 then
-    local label = resolved and resolved.parent_ref or "parent"
-    items[#items + 1] = {
-      text = string.format("Changed (vs %s): %d file(s)", label, #changed.branch),
-      disabled = true,
-    }
-    for _, f in ipairs(changed.branch) do
-      items[#items + 1] = {
-        text = string.format("  %s %s", changed_files.format_status(f.status), f.path),
-        disabled = true,
-      }
-    end
-  end
-
-  return items
+  return table.concat(parts, " · ")
 end
 
 function M.pending(worktree_root)
   local Snacks = require("snacks")
   local cwd = worktree_root or util.worktree_root(vim.api.nvim_get_current_buf()) or vim.fn.getcwd()
-  local items = build_header_items(cwd)
+  local changed = changed_files.collect(cwd)
+  local items = {}
   local comments = filter_by_worktree(store.get_active_pending(), worktree_root)
 
+  local total_changed = #changed.unstaged + #changed.branch
+  if total_changed > 0 then
+    items[#items + 1] = {
+      text = string.format("Browse %d changed file(s) with diff preview", total_changed),
+      item = { action = "files" },
+    }
+  end
+
   if #comments > 0 then
-    items[#items + 1] = { text = string.format("Pending comments (%d)", #comments), disabled = true }
     for i, c in ipairs(comments) do
       local preview = store.comment_body_for_send(c):match("^[^\n]+") or ""
       items[#items + 1] = {
         text = string.format("%d. %s:%d — %s", i, c.relative_path, c.line, preview),
-        file = c.file_path,
-        line = tostring(c.line),
         item = { comment_id = c.id },
       }
     end
   else
-    items[#items + 1] = { text = "No pending comments (already copied? check Resolved batches)", item = { hint = true } }
+    items[#items + 1] = {
+      text = "No pending comments (already copied? check Resolved batches)",
+      item = { hint = true },
+    }
   end
 
   items[#items + 1] = {
-    text = "Keys: Enter=open comment · a=add · y=copy · p=parent · c=clear · ?=help",
+    text = "Keys: Enter=open · f=changed files · a=add · y=copy · p=parent · c=clear",
     item = { hint = true },
   }
 
   Snacks.picker.pick({
-    title = "Code Review · Pending",
+    title = pending_title(cwd),
+    format = "text",
     items = items,
     preview = "none",
     confirm = function(picker, item)
       if not item or not item.item then
+        return
+      end
+      if item.item.action == "files" then
+        picker:close()
+        vim.schedule(function()
+          M.open_diff()
+        end)
         return
       end
       local comment_id = item.item.comment_id
@@ -160,10 +144,17 @@ function M.pending(worktree_root)
         return
       end
       if item.item.hint then
-        notify("Use a=add, y=copy, p=parent, c=clear. Resolved batches are in the menu.", vim.log.levels.INFO)
+        notify("Use f=files, a=add, y=copy, p=parent, c=clear", vim.log.levels.INFO)
       end
     end,
     actions = {
+      cf_files = {
+        desc = "Browse changed files",
+        action = function(picker)
+          picker:close()
+          vim.schedule(M.open_diff)
+        end,
+      },
       cf_copy = {
         desc = "Copy to clipboard",
         action = function(picker)
@@ -202,6 +193,7 @@ function M.pending(worktree_root)
     win = {
       list = {
         keys = {
+          ["f"] = "cf_files",
           ["y"] = "cf_copy",
           ["c"] = "cf_clear",
           ["p"] = "cf_parent",
@@ -229,6 +221,7 @@ function M.resolved()
       preview = {
         text = batch.copied_text or "",
         ft = "markdown",
+        loc = false,
       },
     }
   end
@@ -240,7 +233,19 @@ function M.resolved()
 
   Snacks.picker.pick({
     title = "Code Review · Resolved",
+    format = "text",
+    preview = "preview",
     items = items,
+    confirm = function(_, item)
+      if not item or not item.item or not item.item.batch_id then
+        return
+      end
+      local batch = store.find_batch_by_id(item.item.batch_id)
+      if batch and batch.copied_text and batch.copied_text ~= "" then
+        clipboard.copy(batch.copied_text)
+        notify("Copied batch text to clipboard")
+      end
+    end,
     actions = {
       cf_rollback = {
         desc = "Rollback batch",
@@ -339,39 +344,125 @@ function M.set_parent()
   end)
 end
 
-function M.open_diff(file_path)
-  file_path = file_path or vim.api.nvim_buf_get_name(vim.api.nvim_get_current_buf())
-  if file_path == "" then
+local function diff_text_for_file(worktree, rel_path, section, merge_base_sha)
+  if section == "unstaged" then
+    local unstaged = util.run_text(worktree, { "diff", "--", rel_path })
+    if unstaged and unstaged ~= "" then
+      return unstaged
+    end
+    return util.run_text(worktree, { "diff", "--no-index", "--", "/dev/null", rel_path }) or ""
+  end
+  if merge_base_sha then
+    return util.run_text(worktree, { "diff", merge_base_sha .. "..HEAD", "--", rel_path }) or ""
+  end
+  return ""
+end
+
+local function build_diff_picker_items(cwd)
+  local items = {}
+  local resolved = parent.resolve(cwd)
+  local worktree = util.worktree_root(cwd)
+  if not worktree then
+    return items, nil
+  end
+
+  local changed = changed_files.collect(cwd)
+  local seen = {}
+
+  local function add_file(f, section, label)
+    if seen[f.path] then
+      return
+    end
+    seen[f.path] = true
+    local full = worktree .. "/" .. f.path
+    local preview_text = diff_text_for_file(worktree, f.path, section, resolved and resolved.merge_base_sha)
+    items[#items + 1] = {
+      text = string.format("[%s] %s %s", label, changed_files.format_status(f.status), f.path),
+      file = full,
+      item = { rel = f.path, section = section },
+      preview = {
+        text = preview_text ~= "" and preview_text or "(no diff)",
+        ft = "diff",
+        loc = false,
+      },
+    }
+  end
+
+  local branch_label = resolved and resolved.parent_ref or "parent"
+  for _, f in ipairs(changed.branch) do
+    add_file(f, "branch", branch_label)
+  end
+  for _, f in ipairs(changed.unstaged) do
+    add_file(f, "unstaged", "unstaged")
+  end
+
+  return items, resolved
+end
+
+local function open_file_diff_split(worktree, rel_path, section, merge_base_sha)
+  local diff_text = diff_text_for_file(worktree, rel_path, section, merge_base_sha)
+  if diff_text == "" then
+    notify("No diff for " .. rel_path, vim.log.levels.INFO)
     return
   end
 
-  local resolved = parent.resolve(file_path)
-  if not resolved or not resolved.merge_base_sha then
-    notify("Could not resolve parent branch", vim.log.levels.WARN)
-    return
-  end
-
-  local rel = util.relative_path(resolved.worktree_root, file_path)
   vim.cmd("split")
-  vim.cmd("enew")
-  vim.bo.buftype = "nofile"
-  vim.bo.bufhidden = "wipe"
-  vim.bo.filetype = "diff"
-  vim.fn.jobstart({
-    "git",
-    "diff",
-    resolved.merge_base_sha .. "..HEAD",
-    "--",
-    rel,
-  }, {
-    cwd = resolved.worktree_root,
-    stdout_buffered = true,
-    on_stdout = function(_, data)
-      if data then
-        local line_count = vim.api.nvim_buf_line_count(0)
-        vim.api.nvim_buf_set_lines(0, line_count, line_count, false, data)
+  local buf = vim.api.nvim_get_current_buf()
+  vim.api.nvim_buf_set_lines(buf, 0, -1, false, vim.split(diff_text, "\n", { plain = true }))
+  vim.bo[buf].buftype = "nofile"
+  vim.bo[buf].bufhidden = "wipe"
+  vim.bo[buf].filetype = "diff"
+  vim.bo[buf].modifiable = false
+end
+
+function M.open_diff(file_path)
+  local Snacks = require("snacks")
+  local cwd = util.worktree_root(vim.api.nvim_get_current_buf()) or vim.fn.getcwd()
+  local items, resolved = build_diff_picker_items(cwd)
+
+  if #items == 0 then
+    notify("No changed files found", vim.log.levels.INFO)
+    return
+  end
+
+  local worktree = resolved and resolved.worktree_root or util.worktree_root(cwd)
+  local merge_base = resolved and resolved.merge_base_sha
+
+  Snacks.picker.pick({
+    title = "Changed files · diff",
+    format = "text",
+    preview = "preview",
+    items = items,
+    confirm = function(picker, item)
+      if not item or not item.file then
+        return
       end
+      picker:close()
+      vim.schedule(function()
+        vim.cmd("edit " .. vim.fn.fnameescape(item.file))
+      end)
     end,
+    actions = {
+      cf_open_diff = {
+        desc = "Open diff in split",
+        action = function(picker, item)
+          if not item or not item.item or not worktree then
+            return
+          end
+          picker:close()
+          vim.schedule(function()
+            open_file_diff_split(worktree, item.item.rel, item.item.section, merge_base)
+          end)
+        end,
+      },
+    },
+    win = {
+      list = {
+        keys = {
+          ["d"] = "cf_open_diff",
+        },
+      },
+    },
   })
 end
 

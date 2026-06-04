@@ -23,6 +23,9 @@ M.defaults = {
   },
   copy = {
     include_changed_files = true,
+    -- Clipboard file list: "branch" (vs parent only), "unstaged", or "both"
+    changed_files_mode = "branch",
+    include_diff_instruction = true,
     include_absolute_paths = true,
   },
   keys = {

@@ -8,7 +8,7 @@ local function format_body_for_line(body)
   return body:gsub("\r?\n", "\n     ")
 end
 
-function M.format_changed_files(changed, parent)
+function M.format_changed_files(changed, parent, mode)
   local lines = {}
   local opts = config.get()
 
@@ -16,7 +16,9 @@ function M.format_changed_files(changed, parent)
     return lines
   end
 
-  if #changed.unstaged > 0 then
+  mode = mode or opts.copy.changed_files_mode or opts.changed_files.mode
+
+  if (mode == "unstaged" or mode == "both") and #changed.unstaged > 0 then
     lines[#lines + 1] = "Changed files (unstaged):"
     for _, f in ipairs(changed.unstaged) do
       lines[#lines + 1] = string.format("  - %s", f.path)
@@ -24,7 +26,7 @@ function M.format_changed_files(changed, parent)
     lines[#lines + 1] = ""
   end
 
-  if #changed.branch > 0 then
+  if (mode == "branch" or mode == "both") and #changed.branch > 0 then
     local label = parent and parent.parent_ref or "parent"
     lines[#lines + 1] = string.format("Changed files (vs %s):", label)
     for _, f in ipairs(changed.branch) do
@@ -42,9 +44,11 @@ function M.build_review_copy_text(comments, cwd)
   local changed = changed_files.collect(cwd)
   local lines = M.format_changed_files(changed, changed.parent)
 
-  lines[#lines + 1] =
-    "Please address the following code review comments. Run git diff (or git diff HEAD) to see the full context of any changes, especially for deleted lines."
-  lines[#lines + 1] = ""
+  if opts.copy.include_diff_instruction then
+    lines[#lines + 1] =
+      "Please address the following code review comments. Run git diff (or git diff HEAD) to see the full context of any changes, especially for deleted lines."
+    lines[#lines + 1] = ""
+  end
 
   for i, item in ipairs(comments) do
     local path = opts.copy.include_absolute_paths and item.file_path or item.relative_path

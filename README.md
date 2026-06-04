@@ -126,18 +126,14 @@ Then restart Neovim or run `:Lazy sync`.
 | `:ClaudeFeedbackPending` | Pending picker |
 | `:ClaudeFeedbackCopy` | Copy to clipboard |
 | `:ClaudeFeedbackSetParent` | Choose base/parent branch |
-| `:ClaudeFeedbackDiff` | Diff current file vs parent |
+| `:ClaudeFeedbackDiff` | Browse changed files with diff preview |
 | `:ClaudeFeedbackResolved` | Resolved batch history |
 | `:ClaudeFeedbackClear` | Clear pending comments |
 
 ## Copied output format
 
 ```text
-Changed files (unstaged):
-  - src/a.ts
-  - src/b.ts
-
-Changed files (vs main):
+Changed files (vs origin/development):
   - src/a.ts
   - src/d.ts
 
@@ -146,6 +142,8 @@ Please address the following code review comments. Run git diff (or git diff HEA
   1. @/abs/path/src/a.ts L42: Comment body
      ↳ You: follow-up reply
 ```
+
+The pending picker still shows **both** unstaged and branch file lists (per `changed_files.mode`). Clipboard copy defaults to **branch-only** file paths (`copy.changed_files_mode = "branch"`) so unstaged working-tree changes are not mixed into the review batch unless you opt in.
 
 ## Parent / base branch
 
@@ -189,6 +187,8 @@ require("claude-feedback").setup({
   },
   copy = {
     include_changed_files = true,
+    changed_files_mode = "branch", -- clipboard: "branch" | "unstaged" | "both"
+    include_diff_instruction = true,
     include_absolute_paths = true,
   },
 })

@@ -6,7 +6,7 @@ local actions = {
   ["Add review comment"] = "add_comment",
   ["Open pending list"] = "pending",
   ["Copy to clipboard"] = "copy",
-  ["Open diff vs parent"] = "diff",
+  ["Browse changed files (diff)"] = "diff",
   ["Set parent branch"] = "set_parent",
   ["Resolved batches"] = "resolved",
 }
@@ -17,7 +17,7 @@ function M.open()
     "Add review comment",
     "Open pending list",
     "Copy to clipboard",
-    "Open diff vs parent",
+    "Browse changed files (diff)",
     "Set parent branch",
     "Resolved batches",
   }, { prompt = "Code Review" }, function(choice)
