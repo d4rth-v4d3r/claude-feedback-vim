@@ -22,7 +22,7 @@ M.defaults = {
     config_key = "codeReviewParent",
   },
   copy = {
-    include_changed_files = true,
+    include_changed_files = false,
     -- Clipboard file list: "branch" (vs parent only), "unstaged", or "both"
     changed_files_mode = "branch",
     include_diff_instruction = true,

@@ -1,6 +1,6 @@
 # Claude Feedback for Neovim / LazyVim
 
-A Neovim plugin inspired by [claude-feedback](https://github.com/d4rth-v4d3r/claude-feedback) (VS Code). Collect line-level code review comments in the editor, include changed files in the copied batch, and **paste into Claude Code, Cursor, or anywhere else**.
+A Neovim plugin inspired by [claude-feedback](https://github.com/d4rth-v4d3r/claude-feedback) (VS Code). Collect line-level code review comments in the editor and **paste into Claude Code, Cursor, or anywhere else**.
 
 Use [diffview.nvim](https://github.com/sindrets/diffview.nvim) (or your preferred diff tool) for side-by-side review — this plugin focuses on comments and clipboard output only.
 
@@ -10,7 +10,7 @@ The VS Code extension auto-launches Claude in a terminal. This Neovim port is bu
 
 1. Review code with your own diff tool (e.g. Diffview)
 2. Add comments on specific lines
-3. Copy a formatted batch (comments + changed file list) → paste wherever you want
+3. Copy a formatted batch of comments → paste wherever you want
 
 No Graphite, Git Town, or `gh` — plain git only.
 
@@ -20,8 +20,7 @@ No Graphite, Git Town, or `gh` — plain git only.
 - **Thread float** — reply, edit, delete at the cursor (`<leader>rt`)
 - **Jump between comments** — `]r` / `[r` in the current buffer
 - **Pending picker** — all pending comments + copy/clear actions
-- **Copy to clipboard** — primary send action; archives batch to resolved history
-- **Changed files in copy output** — unstaged and/or vs parent branch (plain git)
+- **Copy to clipboard** — primary send action; copies comments only (optional changed-files list)
 - **Parent branch picker** — manual base branch per worktree, or save to git config
 - **Re-anchor on save** — comments follow line edits when possible
 - **Resolved batches** — view history, re-copy, or **rollback** to pending
@@ -32,7 +31,7 @@ No Graphite, Git Town, or `gh` — plain git only.
 |-------------|-------|
 | Neovim **0.10+** | Uses `vim.system` |
 | [snacks.nvim](https://github.com/folke/snacks.nvim) | Input, picker, float windows |
-| `git` | On `PATH` (changed-files list in copy output) |
+| `git` | On `PATH` (optional changed-files list in copy output) |
 | Clipboard tool | `pbcopy` (macOS), `wl-copy`, or `xclip` |
 
 ## Installation
@@ -138,21 +137,17 @@ Uses `<leader>r*` (review) to avoid LazyVim conflicts (`<leader>cm` = Mason, `<l
 ## Copied output format
 
 ```text
-Changed files (vs origin/development):
-  - src/a.ts
-  - src/d.ts
-
 Please address the following code review comments. Run git diff (or git diff HEAD) to see the full context of any changes, especially for deleted lines.
 
   1. @/abs/path/src/a.ts L42: Comment body
      ↳ You: follow-up reply
 ```
 
-Clipboard copy defaults to **branch-only** file paths (`copy.changed_files_mode = "branch"`). Change via config if you want unstaged files included.
+To include changed file paths in the clipboard output, set `copy.include_changed_files = true` (and optionally `copy.changed_files_mode = "branch"`).
 
 ## Parent / base branch
 
-Used for the "changed files vs parent" section in copied output. Resolution order (plain git):
+Used when `copy.include_changed_files = true` for the optional changed-files section. Resolution order (plain git):
 
 1. **Worktree override** — set via `:ClaudeFeedbackSetParent` (stored in plugin state)
 2. **`git config branch.<name>.codeReviewParent`** — portable, shared with the VS Code extension
@@ -183,7 +178,7 @@ require("claude-feedback").setup({
     config_key = "codeReviewParent",
   },
   copy = {
-    include_changed_files = true,
+    include_changed_files = false,
     changed_files_mode = "branch",
     include_diff_instruction = true,
     include_absolute_paths = true,
@@ -200,7 +195,7 @@ State is persisted to `stdpath("data")/claude-feedback/state.json`.
 2. :ClaudeFeedbackSetParent              → pick base branch (once)
 3. <leader>ra on each concern line
 4. :ClaudeFeedbackPending                → verify comments
-5. <leader>ry                            → copy everything
+5. <leader>ry                            → copy comments
 6. Paste into Claude Code
 7. :ClaudeFeedbackResolved → r           → rollback if you copied too early
 ```
@@ -210,7 +205,7 @@ State is persisted to `stdpath("data")/claude-feedback/state.json`.
 | | VS Code extension | This plugin |
 |---|-------------------|-------------|
 | Primary send | Copy + auto-launch `claude` | **Copy only** |
-| Changed files in output | No | **Yes (unstaged + branch)** |
+| Changed files in output | No | **Optional** (off by default) |
 | Diff UI | VS Code diff | **Use Diffview / your tool** |
 | Parent branch | Graphite, Git Town, gh | **Plain git + manual picker** |
 | Comment UI | Native comment threads | Signs + float + picker |

@@ -4,7 +4,7 @@
 INTRODUCTION                                         *claude-feedback*
 
 Collect line-level code review comments, copy a formatted batch to the
-clipboard (comments + changed files list), and manage pending/resolved batches.
+clipboard, and manage pending/resolved batches.
 
 Use diffview.nvim or your preferred diff tool for side-by-side review.
 
@@ -44,7 +44,10 @@ CONFIGURATION                                         *claude-feedback-config*
   require("claude-feedback").setup({
     changed_files = { mode = "both" },
     parent_branch = { fallback = "main" },
-    copy = { changed_files_mode = "branch" },
+    copy = {
+      include_changed_files = false,
+      changed_files_mode = "branch",
+    },
   })
 <
 
