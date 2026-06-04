@@ -130,7 +130,7 @@ function M.pending(worktree_root)
         text = string.format("%d. %s:%d — %s", i, c.relative_path, c.line, preview),
         file = c.file_path,
         line = tostring(c.line),
-        item = { comment_id = c.id, comment = c },
+        item = { comment_id = c.id },
       }
     end
   else
@@ -142,11 +142,11 @@ function M.pending(worktree_root)
     items = items,
     preview = "none",
     confirm = function(picker, item)
-      local comment = item and item.item and item.item.comment
-      if comment then
+      local comment_id = item and item.item and item.item.comment_id
+      if comment_id then
         picker:close()
         vim.schedule(function()
-          thread.open(comment.id)
+          thread.open(comment_id)
         end)
       end
     end,

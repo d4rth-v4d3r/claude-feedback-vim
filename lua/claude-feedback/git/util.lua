@@ -99,7 +99,7 @@ end
 function M.relative_path(cwd, file_path)
   local root = M.worktree_root(cwd) or cwd
   file_path = vim.fn.fnamemodify(file_path, ":p")
-  root = vim.fn.fnamemodify(root, ":p")
+  root = vim.fn.fnamemodify(root, ":p"):gsub("/$", "")
   if file_path:sub(1, #root) == root then
     local rel = file_path:sub(#root + 2)
     return rel ~= "" and rel or vim.fn.fnamemodify(file_path, ":t")
